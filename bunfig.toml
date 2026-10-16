@@ -1,0 +1,1 @@
+# Install with `bun install --frozen-lockfile` in CI; locally `bun install` creates or updates bun.lock.

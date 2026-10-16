@@ -1,0 +1,302 @@
+[
+ {
+  "score": 0.2,
+  "a": "The woman is styling her hair.",
+  "b": "The woman is slicing herbs."
+ },
+ {
+  "score": 0.4,
+  "a": "A man is kicking pots of water.",
+  "b": "A man is picking flowers."
+ },
+ {
+  "score": 0.4,
+  "a": "A woman is dancing.",
+  "b": "A woman is playing violin."
+ },
+ {
+  "score": 0.5,
+  "a": "A man is playing a guitar.",
+  "b": "A man is driving a car."
+ },
+ {
+  "score": 0.533,
+  "a": "A man is playing a guitar.",
+  "b": "A man is eating pasta."
+ },
+ {
+  "score": 0.538,
+  "a": "A woman is taking a bath.",
+  "b": "A woman is riding a horse."
+ },
+ {
+  "score": 0.6,
+  "a": "A man is cutting paper with a sword.",
+  "b": "A woman is cutting a tomato."
+ },
+ {
+  "score": 0.6,
+  "a": "A man is cycling.",
+  "b": "A man is talking."
+ },
+ {
+  "score": 0.75,
+  "a": "A man is riding a motorcycle.",
+  "b": "A woman is riding a horse."
+ },
+ {
+  "score": 0.8,
+  "a": "A man is opening a door.",
+  "b": "A man is cutting an onion."
+ },
+ {
+  "score": 0.8,
+  "a": "A man is slicing a tomato.",
+  "b": "A man is riding a horse."
+ },
+ {
+  "score": 0.8,
+  "a": "A man is speaking.",
+  "b": "A man is cooking."
+ },
+ {
+  "score": 1.2,
+  "a": "A car is driven down the road.",
+  "b": "A girl is walking down a road."
+ },
+ {
+  "score": 1.2,
+  "a": "A man is cutting a pipe with scissors.",
+  "b": "A man is cutting carpet with a knife."
+ },
+ {
+  "score": 1.2,
+  "a": "A man is driving a car.",
+  "b": "A man is riding a horse."
+ },
+ {
+  "score": 1.4,
+  "a": "A woman is slicing some tomatoes.",
+  "b": "A woman is chopping a potato."
+ },
+ {
+  "score": 1.4,
+  "a": "A woman is wrapping tofu.",
+  "b": "A woman is balling dough."
+ },
+ {
+  "score": 1.5,
+  "a": "A man is cutting apple by his hand.",
+  "b": "A man is cutting carpet with a knife."
+ },
+ {
+  "score": 1.5,
+  "a": "A man is playing a harp.",
+  "b": "A man is playing a keyboard."
+ },
+ {
+  "score": 1.714,
+  "a": "A man is playing a guitar.",
+  "b": "A man is playing a trumpet."
+ },
+ {
+  "score": 1.714,
+  "a": "A man is playing a guitar.",
+  "b": "A man is playing a trumpet."
+ },
+ {
+  "score": 1.75,
+  "a": "The ballerina is dancing.",
+  "b": "A man is dancing."
+ },
+ {
+  "score": 1.8,
+  "a": "A man is playing a guitar.",
+  "b": "A man is playing a keyboard."
+ },
+ {
+  "score": 1.8,
+  "a": "A woman is cutting onions.",
+  "b": "A woman is cutting tofu."
+ },
+ {
+  "score": 2.0,
+  "a": "A  man is dancing.",
+  "b": "A man and woman is dancing."
+ },
+ {
+  "score": 2.0,
+  "a": "A man is playing the piano.",
+  "b": "A man played the guitar."
+ },
+ {
+  "score": 2.0,
+  "a": "A man is slicing a tomato.",
+  "b": "A man is slicing a bun."
+ },
+ {
+  "score": 2.2,
+  "a": "A little boy is singing and playing a guitar.",
+  "b": "A man is singing and playing the guitar."
+ },
+ {
+  "score": 2.2,
+  "a": "A man is playing guitar.",
+  "b": "A lady is playing the guitar."
+ },
+ {
+  "score": 2.2,
+  "a": "A man is playing the drums.",
+  "b": "A man is playing the guitar."
+ },
+ {
+  "score": 2.2,
+  "a": "A woman is slicing garlics.",
+  "b": "A woman is slicing an onion."
+ },
+ {
+  "score": 2.25,
+  "a": "A man is slicing an onion.",
+  "b": "A woman is slicing a pumpkin."
+ },
+ {
+  "score": 2.4,
+  "a": "A skunk is looking here and there.",
+  "b": "A skunk looks at the camera."
+ },
+ {
+  "score": 2.4,
+  "a": "A woman is cutting tofu.",
+  "b": "A woman is cutting an onion."
+ },
+ {
+  "score": 2.5,
+  "a": "A girl is styling her hair.",
+  "b": "A girl is brushing her hair."
+ },
+ {
+  "score": 2.6,
+  "a": "The man is using a camera to hammer a nail.",
+  "b": "Someone is banging a camera lense against a nail."
+ },
+ {
+  "score": 3.0,
+  "a": "A woman is talking on a cell phone.",
+  "b": "A man and woman are talking on the phone."
+ },
+ {
+  "score": 3.2,
+  "a": "A turtle is swimming in water.",
+  "b": "A turtle is walking underwater."
+ },
+ {
+  "score": 3.4,
+  "a": "A man is eating a food.",
+  "b": "A man is eating a piece of bread."
+ },
+ {
+  "score": 3.4,
+  "a": "A person is playing an electronic keyboard.",
+  "b": "A kid is playing keyboard."
+ },
+ {
+  "score": 3.4,
+  "a": "Some men are sawing.",
+  "b": "Men are sawing logs."
+ },
+ {
+  "score": 3.5,
+  "a": "A man is riding an electric bicycle.",
+  "b": "A man is riding a bicycle."
+ },
+ {
+  "score": 3.6,
+  "a": "A group of men play soccer on the beach.",
+  "b": "A group of boys are playing soccer on the beach."
+ },
+ {
+  "score": 3.6,
+  "a": "A man attacks a woman.",
+  "b": "A man slaps a woman."
+ },
+ {
+  "score": 3.6,
+  "a": "A man is playing a guitar.",
+  "b": "A man is singing while playing the guitar."
+ },
+ {
+  "score": 3.6,
+  "a": "A man is singing and playing a guitar.",
+  "b": "A man is playing a guitar."
+ },
+ {
+  "score": 3.75,
+  "a": "A man mixes vegetables in a pot.",
+  "b": "A person is stirring vegetables in a pot."
+ },
+ {
+  "score": 3.8,
+  "a": "Someone is slicing an onion.",
+  "b": "A woman is cutting onion."
+ },
+ {
+  "score": 4.0,
+  "a": "A man puts three pieces of meat into a pan.",
+  "b": "A man is putting meat in a pan."
+ },
+ {
+  "score": 4.2,
+  "a": "A man is cutting up a cucumber.",
+  "b": "A man is slicing a cucumber."
+ },
+ {
+  "score": 4.2,
+  "a": "Two zebras play in an open field.",
+  "b": "Two zebras are playing in a field."
+ },
+ {
+  "score": 4.25,
+  "a": "A cat is eating some corn.",
+  "b": "A cat is eating corn on the cob."
+ },
+ {
+  "score": 4.4,
+  "a": "A baby panda goes down a slide.",
+  "b": "A panda slides down a slide."
+ },
+ {
+  "score": 4.4,
+  "a": "A boy studies a calendar.",
+  "b": "A boy is looking at a calendar."
+ },
+ {
+  "score": 4.4,
+  "a": "A man is cutting a potato.",
+  "b": "A man is slicing some potato."
+ },
+ {
+  "score": 4.4,
+  "a": "A man is slicing open a fish.",
+  "b": "A man is cutting up a fish."
+ },
+ {
+  "score": 4.8,
+  "a": "A young woman is putting stickers all over her face.",
+  "b": "A woman is applying stickers to her face."
+ },
+ {
+  "score": 5.0,
+  "a": "A man is cutting an onion.",
+  "b": "A man cuts an onion."
+ },
+ {
+  "score": 5.0,
+  "a": "A woman is dancing in the rain.",
+  "b": "A woman dances in the rain out side."
+ },
+ {
+  "score": 5.0,
+  "a": "One woman is measuring another woman's ankle.",
+  "b": "A woman measures another woman's ankle."
+ }
+]
