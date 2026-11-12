@@ -123,6 +123,19 @@ export interface MemorySearch {
     options?: SearchOptions,
   ): Promise<Fact[]>;
 
+  /**
+   * The facts closest to a vector across the whole tenant, every agent. The
+   * swarm gather for contradiction: a new fact is weighed against what the team
+   * knows, not only one agent's. The same model rule as `factsByVector` — a
+   * fact embedded with another model does not take part.
+   */
+  factsByVectorAcrossAgents(
+    tenantId: TenantId,
+    embedding: number[],
+    model: string,
+    options?: SearchOptions,
+  ): Promise<Fact[]>;
+
   factsByTraversal(
     tenantId: TenantId,
     agent: string,
@@ -206,6 +219,35 @@ export function createMemorySearch(sql: Sql, schema: string = DEFAULT_SCHEMA): M
           AND f.fact_embedding IS NOT NULL
           -- The model filters like the tenant does: a fact embedded with another
           -- model can't be compared with this query, so it doesn't take part.
+          AND f.embedding_model = ${m}
+          AND (${at}::timestamptz IS NULL
+               OR ((f.valid_at IS NULL OR f.valid_at <= ${at})
+               AND (f.invalid_at IS NULL OR f.invalid_at > ${at})))
+        GROUP BY f.id
+        ORDER BY f.fact_embedding <=> ${vector}::vector
+        LIMIT ${limit}
+      `;
+      return rows.map(toFact);
+    },
+
+    async factsByVectorAcrossAgents(tenantId, embedding, model, options = {}) {
+      const t = requireTenant(tenantId, "factsByVectorAcrossAgents");
+      const m = requireModel(model, "factsByVectorAcrossAgents");
+      if (embedding.length === 0) return [];
+      const limit = options.limit ?? 20;
+      const at = options.at ?? null;
+      const vector = toVectorLiteral(embedding);
+
+      // Same sequential scan as `factsByVector` (no ANN index yet), without the
+      // agent filter: the swarm weighs a new fact against the whole tenant's.
+      const rows = await guard(sql, "factsByVectorAcrossAgents")<FactRow>`
+        SELECT f.id, f.tenant_id, f.source_entity_id, f.target_entity_id, f.fact,
+               f.created_at, f.expired_at, f.valid_at, f.invalid_at, f.fact_embedding::text,
+               array_agg(fe.episode_id) FILTER (WHERE fe.episode_id IS NOT NULL) AS episode_ids
+        FROM ${T("facts")} f
+        LEFT JOIN ${T("fact_episodes")} fe ON fe.fact_id = f.id
+        WHERE f.tenant_id = ${t}
+          AND f.fact_embedding IS NOT NULL
           AND f.embedding_model = ${m}
           AND (${at}::timestamptz IS NULL
                OR ((f.valid_at IS NULL OR f.valid_at <= ${at})

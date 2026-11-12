@@ -308,6 +308,19 @@ export interface MemoryStore {
     at: Date,
   ): Promise<Fact[]>;
   /**
+   * The tenant's currently valid facts between two entities, across every
+   * agent. The swarm counterpart of `factsBetween`: when the agents are one
+   * team over a shared reality, a later fact can contradict an earlier one of
+   * another agent, so the candidate set spans owners. It carries no `agent`
+   * on purpose — the whole point is to cross that line.
+   */
+  factsBetweenAcrossAgents(
+    tenantId: TenantId,
+    sourceEntityId: string,
+    targetEntityId: string,
+    at: Date,
+  ): Promise<Fact[]>;
+  /**
    * Adds an episode to the provenance of a fact that already exists. This is
    * what happens when something is said again: the fact is one and the sources
    * accumulate.
@@ -406,6 +419,24 @@ export function createMemoryStore(sql: Sql, schema: string = DEFAULT_SCHEMA): Me
         LEFT JOIN ${T("fact_episodes")} fe ON fe.fact_id = f.id AND fe.tenant_id = f.tenant_id
         WHERE f.tenant_id = ${t}
           AND f.agent = ${a}
+          AND f.source_entity_id = ${sourceEntityId}
+          AND f.target_entity_id = ${targetEntityId}
+          AND (f.valid_at   IS NULL OR f.valid_at   <= ${at})
+          AND (f.invalid_at IS NULL OR f.invalid_at >  ${at})
+        GROUP BY f.id
+      `;
+      return rows.map(toFact);
+    },
+
+    async factsBetweenAcrossAgents(tenantId, sourceEntityId, targetEntityId, at) {
+      const t = requireTenant(tenantId, "factsBetweenAcrossAgents");
+      const rows = await guard(sql, "factsBetweenAcrossAgents")<FactRow>`
+        SELECT f.id, f.tenant_id, f.source_entity_id, f.target_entity_id, f.fact,
+               f.created_at, f.expired_at, f.valid_at, f.invalid_at, f.fact_embedding::text,
+               array_agg(fe.episode_id) FILTER (WHERE fe.episode_id IS NOT NULL) AS episode_ids
+        FROM ${T("facts")} f
+        LEFT JOIN ${T("fact_episodes")} fe ON fe.fact_id = f.id AND fe.tenant_id = f.tenant_id
+        WHERE f.tenant_id = ${t}
           AND f.source_entity_id = ${sourceEntityId}
           AND f.target_entity_id = ${targetEntityId}
           AND (f.valid_at   IS NULL OR f.valid_at   <= ${at})

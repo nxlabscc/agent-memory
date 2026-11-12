@@ -228,6 +228,75 @@ const valid = await memory.recall(A, "assistant", "Rosario");
 check("and the old one stops being valid", !valid.facts.some((f) => f.fact === "The user lives in Rosario"));
 check("logging it", logged.includes("fact invalidated by contradiction"));
 
+// ─── Swarm isolation ─────────────────────────────────────────────────────────
+// A development swarm shares one reality (a codebase): a later fact from one
+// teammate can contradict an earlier one from another. In the default "agent"
+// isolation the two never meet; in "swarm" the candidate set spans the tenant.
+
+const C = "cccccccc-0000-0000-0000-00000000000c";
+const D = "dddddddd-0000-0000-0000-00000000000d";
+const t1 = new Date("2026-01-01T00:00:00Z");
+const t2 = new Date("2026-02-01T00:00:00Z");
+const judgeFirst = async () => "[1]"; // ingestFacts never extracts; this only judges.
+
+const SWARM_SCHEMA = `${SCHEMA}_swarm`;
+await client.unsafe(`DROP SCHEMA IF EXISTS ${SWARM_SCHEMA} CASCADE;`);
+const swarm = await createMemory({
+  sql: client as unknown as MigratingSql,
+  schema: SWARM_SCHEMA,
+  embedder: embedderFor,
+  isolation: "swarm",
+  log: () => {},
+});
+
+await swarm.ingestFacts({
+  tenantId: C, agent: "builder-1",
+  facts: [{ sourceName: "nexusscan", targetName: "entrypoint", fact: "nexusscan exposes a CLI entry point", validAt: t1 }],
+  source: { kind: "action", sessionId: "b1", messageId: "b1:1" },
+  content: "build", validAt: t1, complete: judgeFirst,
+});
+const orchestrated = await swarm.ingestFacts({
+  tenantId: C, agent: "orchestrator",
+  facts: [{ sourceName: "nexusscan", targetName: "entrypoint", fact: "nexusscan exposes no CLI entry point", validAt: t2 }],
+  source: { kind: "action", sessionId: "o1", messageId: "o1:1" },
+  content: "review", validAt: t2, complete: judgeFirst,
+});
+check("swarm: the orchestrator's contradicting fact gets in", orchestrated === 1);
+
+const builderAtT1 = await swarm.recall(C, "builder-1", "nexusscan entry point", { at: t1 });
+check("swarm: builder-1's fact was valid when it was stated",
+  builderAtT1.facts.some((f) => f.fact === "nexusscan exposes a CLI entry point"));
+const builderNow = await swarm.recall(C, "builder-1", "nexusscan entry point");
+check("swarm: a teammate's later fact closes an earlier one of another agent",
+  !builderNow.facts.some((f) => f.fact === "nexusscan exposes a CLI entry point"));
+
+// Same two facts under "agent" isolation: the agents' memories never cross.
+// Its own schema, so it does not change what the default one holds.
+const ISOLATED_SCHEMA = `${SCHEMA}_isolated`;
+await client.unsafe(`DROP SCHEMA IF EXISTS ${ISOLATED_SCHEMA} CASCADE;`);
+const isolated = await createMemory({
+  sql: client as unknown as MigratingSql,
+  schema: ISOLATED_SCHEMA,
+  embedder: embedderFor,
+  isolation: "agent",
+  log: () => {},
+});
+await isolated.ingestFacts({
+  tenantId: D, agent: "builder-1",
+  facts: [{ sourceName: "widget", targetName: "entrypoint", fact: "widget exposes a CLI entry point", validAt: t1 }],
+  source: { kind: "action", sessionId: "b2", messageId: "b2:1" },
+  content: "build", validAt: t1, complete: judgeFirst,
+});
+await isolated.ingestFacts({
+  tenantId: D, agent: "orchestrator",
+  facts: [{ sourceName: "widget", targetName: "entrypoint", fact: "widget exposes no CLI entry point", validAt: t2 }],
+  source: { kind: "action", sessionId: "o2", messageId: "o2:1" },
+  content: "review", validAt: t2, complete: judgeFirst,
+});
+const builderIsolated = await isolated.recall(D, "builder-1", "widget entry point");
+check("agent isolation: another agent's fact never reaches this one",
+  builderIsolated.facts.some((f) => f.fact === "widget exposes a CLI entry point"));
+
 // ─── Model change ────────────────────────────────────────────────────────────
 
 check("with the same model there is nothing to recompute", (await memory.tenantsToReembed(stub.name)).length === 0);

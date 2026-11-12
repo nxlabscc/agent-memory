@@ -31,10 +31,24 @@ import { applyMigrations, type MigratingSql } from "./migrations";
 import { createAgentNotes, type AgentNote } from "./notes";
 import { reembedTenant, tenantsWithStaleEmbeddings } from "./reembed";
 import type { ReembedOptions, ReembedReport } from "./reembed";
-import { maximalMarginalRelevance } from "./rerank";
+import { cosineSimilarity, maximalMarginalRelevance } from "./rerank";
 import { createMemorySearch } from "./search";
 import { createMemoryStore, DEFAULT_SCHEMA, requireSchema } from "./store";
 import type { Episode, EpisodeSource, Fact, TenantId } from "./types";
+
+/**
+ * Swarm contradiction: how a new fact finds what it might contradict.
+ *
+ * `SWARM_CANDIDATE_LIMIT` caps how many of the tenant's valid facts, nearest by
+ * the fact's own vector, reach the judge — it bounds the judge's cost.
+ * `CONTRADICTION_CANDIDATE_COSINE_MIN` is how close a fact must be to reach it
+ * at all. It sits below the repetition cutoff (`SAME_FACT_COSINE_MIN`, 0.92) on
+ * purpose: the aim is to SHOW the judge what might conflict, not to decide
+ * equivalence, so it leans to recall and the LLM judge is the precision filter.
+ * It is a starting point, not a number measured against a benchmark.
+ */
+const SWARM_CANDIDATE_LIMIT = 12;
+const CONTRADICTION_CANDIDATE_COSINE_MIN = 0.5;
 
 export interface MemoryConfig {
   /** The Postgres client. The memory opens no connections of its own: it uses this one. */
@@ -51,6 +65,22 @@ export interface MemoryConfig {
   embedder: (tenantId: TenantId) => EmbeddingProvider | null;
   /** Internal events worth reporting: a migration applied, a fact invalidated. */
   log?: (message: string, data: Record<string, unknown>) => void;
+  /**
+   * Whose facts a new one is weighed against for contradiction.
+   *
+   * - `"agent"` (the default): each agent's memory is its own. A new fact is
+   *   weighed only against the same agent's facts about the same pair of
+   *   entities. Independent viewpoints that never collide — the shape for
+   *   agents that are different people's assistants.
+   * - `"swarm"`: the agents are one team over a shared reality (a codebase, a
+   *   project). A new fact is weighed against the whole tenant's currently
+   *   valid facts — the same pair of entities across every agent, and the ones
+   *   nearest by meaning — so a later team fact can close an earlier one of
+   *   another agent, even when phrased with other words. The closed fact keeps
+   *   its author; only its validity changes. Repetition stays per agent:
+   *   provenance is still whoever said it.
+   */
+  isolation?: "agent" | "swarm";
 }
 
 /** A fact already stated by the client, without provenance: the memory supplies the episode. */
@@ -162,6 +192,7 @@ export async function createMemory(config: MemoryConfig): Promise<Memory> {
   const schema = requireSchema(config.schema ?? DEFAULT_SCHEMA);
   const { sql, embedder } = config;
   const log = config.log ?? (() => {});
+  const isolation = config.isolation ?? "agent";
 
   for (const name of await applyMigrations(sql, schema)) {
     log("migration applied", { schema, name });
@@ -171,6 +202,55 @@ export async function createMemory(config: MemoryConfig): Promise<Memory> {
   const search = createMemorySearch(sql, schema);
   const notes = createAgentNotes(sql, schema);
   const index = createDocumentIndex(sql, schema);
+
+  /**
+   * The facts a new one is weighed against for contradiction.
+   *
+   * In isolation it is what the same agent already holds about this very pair
+   * of entities — the library's original partition. In a swarm the agents are
+   * one team over a shared reality, so the set widens to the whole tenant: the
+   * same pair of entities across every agent (a later fact can close an earlier
+   * one of another agent), and, when there is a vector, the facts nearest by
+   * meaning — which is how "a CLI entry point" reaches "a console entry point"
+   * though the words and the entities differ. The judge decides which exclude
+   * each other; this decides only what the judge gets to see.
+   */
+  async function contradictionCandidates(
+    tenantId: TenantId,
+    draft: FactDraft,
+    sourceEntityId: string,
+    targetEntityId: string,
+    sameAgent: Fact[],
+    embedding: number[] | undefined,
+    embeddingModel: string | undefined,
+  ): Promise<Fact[]> {
+    if (isolation === "agent") return sameAgent;
+
+    const byId = new Map<string, Fact>();
+    for (const f of await store.factsBetweenAcrossAgents(
+      tenantId,
+      sourceEntityId,
+      targetEntityId,
+      draft.validAt,
+    )) {
+      byId.set(f.id, f);
+    }
+    if (embedding && embeddingModel) {
+      const near = await search.factsByVectorAcrossAgents(tenantId, embedding, embeddingModel, {
+        at: draft.validAt,
+        limit: SWARM_CANDIDATE_LIMIT,
+      });
+      for (const f of near) {
+        if (
+          f.embedding != null &&
+          cosineSimilarity(f.embedding, embedding) >= CONTRADICTION_CANDIDATE_COSINE_MIN
+        ) {
+          byId.set(f.id, f);
+        }
+      }
+    }
+    return [...byId.values()];
+  }
 
   /**
    * Resolves the candidates' entities and writes.
@@ -243,6 +323,20 @@ export async function createMemory(config: MemoryConfig): Promise<Memory> {
         continue;
       }
 
+      // Who this new fact is weighed against for contradiction, gathered before
+      // the write so the fact is never offered as its own candidate. In
+      // isolation that is the agent's own facts about this pair; in a swarm it
+      // is the whole tenant's, by pair and by meaning.
+      const candidates = await contradictionCandidates(
+        tenantId,
+        draft,
+        sourceEntityId,
+        targetEntityId,
+        current,
+        embedding,
+        provider?.name,
+      );
+
       const created = {
         id: randomUUID(),
         agent,
@@ -256,14 +350,14 @@ export async function createMemory(config: MemoryConfig): Promise<Memory> {
       await store.insertFact(tenantId, created);
       written++;
 
-      // What is left after ruling out repetition: different statements about
-      // the same two entities. They may coexist or exclude each other, and
-      // comparing text cannot decide that — it is the part left to the LLM.
-      if (current.length === 0) continue;
+      // What is left after ruling out repetition: different statements that may
+      // coexist or exclude each other. Comparing text cannot decide that — it
+      // is the part left to the LLM, over the candidates gathered above.
+      if (candidates.length === 0) continue;
       const contradicted = await judgeContradictions(
         complete,
         draft.fact,
-        current.map((f) => f.fact),
+        candidates.map((f) => f.fact),
       );
       if (contradicted.length === 0) continue;
 
@@ -275,7 +369,7 @@ export async function createMemory(config: MemoryConfig): Promise<Memory> {
       };
       for (const invalidation of resolveContradictions(
         incoming,
-        contradicted.map((i) => current[i]!),
+        contradicted.map((i) => candidates[i]!),
       )) {
         const closed = applyInvalidation(invalidation, new Date());
         await store.invalidateFact(tenantId, closed.id, closed.invalidAt!, closed.expiredAt!);

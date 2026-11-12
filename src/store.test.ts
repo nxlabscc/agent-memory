@@ -119,6 +119,8 @@ describe("createMemoryStore — every operation requires a tenant", () => {
         episodeIds: [],
       })],
     ["factsValidAt", () => store.factsValidAt("", "assistant", new Date())],
+    ["factsBetweenAcrossAgents", () =>
+      store.factsBetweenAcrossAgents("", "a", "b", new Date())],
     ["invalidateFact", () =>
       store.invalidateFact("", "f1", new Date(), new Date())],
   ];
@@ -155,12 +157,29 @@ describe("createMemoryStore — every query carries the scope", () => {
       episodeIds: ["e1"],
     });
     await store.factsValidAt(TENANT, "assistant", now);
+    await store.factsBetweenAcrossAgents(TENANT, "a", "b", now);
     await store.invalidateFact(TENANT, "f1", now, now);
 
-    expect(queries.length).toBeGreaterThanOrEqual(7);
+    expect(queries.length).toBeGreaterThanOrEqual(8);
     for (const query of queries) {
       expect(query, query.slice(0, 60)).toContain("tenant_id");
     }
+  });
+
+  test("factsBetweenAcrossAgents crosses agents, keeping the tenant and the pair", async () => {
+    const { sql, queries } = spy();
+    const store = createMemoryStore(sql);
+
+    await store.factsBetweenAcrossAgents(TENANT, "src-id", "tgt-id", new Date());
+
+    expect(queries).toHaveLength(1);
+    const q = queries[0]!;
+    expect(q).toContain("tenant_id");
+    expect(q).toContain("source_entity_id");
+    expect(q).toContain("target_entity_id");
+    // The swarm candidate query deliberately does NOT filter by agent: that is
+    // the whole point — a later fact can contradict another agent's.
+    expect(q).not.toContain("f.agent =");
   });
 
   test("the provenance link is scoped too", async () => {
