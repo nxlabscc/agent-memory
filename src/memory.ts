@@ -25,6 +25,7 @@ import type { IndexedDocument, NewDocument } from "./documents";
 import type { FactDraft } from "./drafts";
 import type { EmbeddingProvider } from "./embedding";
 import { extractFacts } from "./extract";
+import { forgetSessions, type ForgetOptions, type Forgotten } from "./forget";
 import type { CompleteFn, ConversationTurn, PromptOptions } from "./extract";
 import { applyInvalidation, resolveContradictions } from "./invalidation";
 import { applyMigrations, type MigratingSql } from "./migrations";
@@ -165,6 +166,11 @@ export interface Memory {
   /** Writes or overwrites documents in the index. Returns how many. */
   indexDocuments(tenantId: TenantId, docs: NewDocument[]): Promise<number>;
   forgetDocuments(tenantId: TenantId, externalIds: string[]): Promise<void>;
+  /**
+   * The client deleted these sessions: their notes and episodes go, and so do
+   * the facts that came only from them and the entities left without facts.
+   */
+  forgetSessions(tenantId: TenantId, sessionIds: string[], options?: ForgetOptions): Promise<Forgotten>;
 
   /**
    * What is relevant to a text: the agent's facts and notes, the tenant's
@@ -462,6 +468,10 @@ export async function createMemory(config: MemoryConfig): Promise<Memory> {
 
     forgetDocuments(tenantId, externalIds) {
       return index.forget(tenantId, externalIds);
+    },
+
+    forgetSessions(tenantId, sessionIds, options) {
+      return forgetSessions(sql, schema, tenantId, sessionIds, options);
     },
 
     async recall(tenantId, agent, query, options = {}) {

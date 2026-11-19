@@ -25,6 +25,8 @@ export type {
 
 export { createMemory } from "./memory";
 
+export type { ForgetOptions, Forgotten } from "./forget";
+
 export type {
   CandidateIndex,
   Resolution,

@@ -7,7 +7,8 @@ The client decides what to hand over and when; how it is stored and searched is 
 
 - **Facts** are edges between two **entities**, with validity on two time axes: when the system
   learned it (`created_at` / `expired_at`) and when it was true in the world (`valid_at` /
-  `invalid_at`). Nothing is deleted: a fact that stops being true closes its interval.
+  `invalid_at`). A fact that stops being true closes its interval and stays. What is deleted is
+  what came from a source the client deleted: see `forgetSessions`.
 - Every fact keeps its **provenance**: the episodes it came from. An episode is a pointer to the
   original text plus its hash, never a copy.
 - Writing resolves entities deterministically (exact name, then MinHash + Jaccard), merges a repeated
@@ -67,6 +68,7 @@ const { facts, notes, documents } = await memory.recall(tenantId, "assistant", "
 | `ingestFacts` | facts the client already states (e.g. what an agent did), the pointer and the text it points to | episode, and the same from entities on |
 | `remember` | an agent's note | vector and write |
 | `indexDocuments` / `forgetDocuments` | documents: external id, title, table of contents, free-form `extra` | vector of title + toc, upsert; `extra` is stored and returned untouched |
+| `forgetSessions(tenantId, sessionIds, { dryRun? })` | sessions the client deleted | in one transaction: their notes, their episodes, the facts that came only from them and the entities left without facts; a fact another episode also says stays. Returns what went; `dryRun` reports it and rolls back |
 
 ### Reading
 
